@@ -1,0 +1,25 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "D:\\Projects\\LIN\\Backend\\log\\.43845979d3dc9df5659997fb504c9867015491a9-audit.json",
+    "files": [
+        {
+            "date": 1757881064313,
+            "name": "D:\\Projects\\LIN\\Backend\\log\\application-2025-09-15.log",
+            "hash": "adf41f61c0b68a25e61ea22c00bfece87c77adedf9a743df24bbb6edd7a8492d"
+        },
+        {
+            "date": 1758182184828,
+            "name": "D:\\Projects\\LIN\\Backend\\log\\application-2025-09-18.log",
+            "hash": "31f8fdf2e4fdcf505d8c30132307206707d4916f6a4f00e7a36b309d79b40b7a"
+        },
+        {
+            "date": 1758220813038,
+            "name": "D:\\Projects\\LIN\\Backend\\log\\application-2025-09-19.log",
+            "hash": "defe487b536925d31bdc0dea95f58d7a82e93294e6a99b608b0dede573c48534"
+        }
+    ],
+    "hashType": "sha256"
+}

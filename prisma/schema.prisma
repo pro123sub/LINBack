@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+// output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  name              String
+  email             String    @unique
+  phone             String    @unique
+  password          String
+  dob               DateTime
+  gender            String?
+  address           String
+  state             String
+  city              String
+  postalCode        String
+
+  aadhaarNumber     String
+  aadhaarVerified   Boolean   @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
+
+  panNumber         String?
+  annualIncome      Float?
+  employmentType    String?
+  employerName      String?
+
+  otpCode           String?
+  otpExpiresAt      DateTime?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  loans             Loan[]
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model Loan {
+  id            Int      @id @default(autoincrement())
+  amount        Float
+  interestRate  Float
+  termMonths    Int
+  startDate     DateTime
+  status        String
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
