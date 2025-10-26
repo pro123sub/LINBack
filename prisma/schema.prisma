@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-// output   = "../generated/prisma"
 }
 
 datasource db {
@@ -8,36 +7,171 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==============================
+// MODELS
+// ==============================
+
 model User {
-  id                Int       @id @default(autoincrement())
-  name              String
-  email             String    @unique
-  phone             String    @unique
-  password          String
-  dob               DateTime
-  gender            String?
-  address           String
-  state             String
-  city              String
-  postalCode        String
+  id                  Int                   @id @default(autoincrement())
+  customUserId        String?               @unique
+  name                String?
+  email               String?               @unique
+  phone               String                @unique
+  password            String?
+  phoneVerified       Boolean               @default(false)
+  phoneVerifiedAt     DateTime?
+  dob                 DateTime?
+  gender              Gender?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  role                UserRole              @default(CUSTOMER)
+  verificationStatus  VerificationStatus    @default(PENDING)
 
-  aadhaarNumber     String
-  aadhaarVerified   Boolean   @default(false)
-  verificationStatus VerificationStatus @default(PENDING)
+  // One-to-One Relations
+  aadhaarVerification AadhaarVerification?
+  panVerification     PanVerification?
+  employment          EmploymentDetail?
+  address             AddressDetail?
 
-  panNumber         String?
-  annualIncome      Float?
-  employmentType    String?
-  employerName      String?
+  // OTP History
+  otps                OtpVerification[]
 
-  otpCode           String?
-  otpExpiresAt      DateTime?
+  // Loan History
+  loans               Loan[]
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  loans             Loan[]
+  // Loan Applications
+  loanApplications    LoanApplication[]
+  // ✅ New Relations
+  documents           UserDocument[]
+  locations           UserLocation[]
 }
+
+model AadhaarVerification {
+  id            Int      @id @default(autoincrement())
+  aadhaarNumber String   @unique
+  verified      Boolean  @default(false)
+  verifiedAt    DateTime?
+  userId        Int      @unique
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model PanVerification {
+  id          Int      @id @default(autoincrement())
+  panNumber   String   @unique
+  verified    Boolean  @default(false)
+  verifiedAt  DateTime?
+  userId      Int      @unique
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model EmploymentDetail {
+  id             Int                @id @default(autoincrement())
+  userId         Int                @unique
+  user           User               @relation(fields: [userId], references: [id])
+  
+  employmentType EmploymentType
+  employerName   String?
+  companyAddress String?
+  monthlyIncome  Float?
+  stability      JobStability?
+
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  // Loan Applications
+  loanApplications LoanApplication[] @relation("EmploymentLoanApplications")
+}
+
+model AddressDetail {
+  id                   Int         @id @default(autoincrement())
+  currentAddress       String?
+  permanentAddress     String?
+  city                 String?
+  state                String?
+  postalCode           String?
+  currentAddressType   AddressType?
+  currentAddressProof  String?
+  userId               Int         @unique
+  user                 User        @relation(fields: [userId], references: [id])
+}
+
+model OtpVerification {
+  id        Int       @id @default(autoincrement())
+  otpCode   String
+  expiresAt DateTime
+  verified  Boolean   @default(false)
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime  @default(now())
+}
+
+model Loan {
+  id            Int       @id @default(autoincrement())
+  loanAmount    Float
+  purposeOfLoan String?
+  interestRate  Float?
+  termMonths    Int?
+  startDate     DateTime?
+  status        LoanStatus @default(PENDING)
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model LoanApplication {
+  id                 Int                  @id @default(autoincrement())
+  userId             Int
+  user               User                 @relation(fields: [userId], references: [id])
+
+  employmentDetailId Int?
+  employmentDetail   EmploymentDetail?    @relation("EmploymentLoanApplications", fields: [employmentDetailId], references: [id])
+
+  loanType           LoanType
+  loanAmount         Float?
+  otpVerified        Boolean   @default(false)
+  status             LoanStatus @default(PENDING)
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+// ✅ NEW MODEL — Firebase Document Storage
+model UserDocument {
+  id          Int            @id @default(autoincrement())
+  userId      Int
+  user        User           @relation(fields: [userId], references: [id])
+  
+  docType     DocumentType
+  fileUrl     String         // Firebase Storage URL
+  verified    Boolean        @default(false)
+  uploadedAt  DateTime       @default(now())
+}
+
+// ✅ NEW MODEL — Mapbox Location + Locality + Address Capture
+model UserLocation {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+
+  latitude    Float
+  longitude   Float
+  accuracy    Float?
+
+  // ✅ Mapbox Reverse Geocoding Fields
+  locality    String?        
+  city        String?
+  state       String?
+  country     String?
+  postalCode  String?
+  placeName   String?  // Full formatted address
+
+  capturedAt  DateTime @default(now())
+}
+
+
+// ==============================
+// ENUMS
+// ==============================
 
 enum VerificationStatus {
   PENDING
@@ -45,15 +179,64 @@ enum VerificationStatus {
   REJECTED
 }
 
-model Loan {
-  id            Int      @id @default(autoincrement())
-  amount        Float
-  interestRate  Float
-  termMonths    Int
-  startDate     DateTime
-  status        String
-  userId        Int
-  user          User     @relation(fields: [userId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+enum UserRole {
+  CUSTOMER
+  DSA
+  AFFILIATE
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  PREFER_NOT_TO_SAY
+}
+
+enum JobStability {
+  VERY_UNSTABLE
+  SOMEWHAT_UNSTABLE
+  NEUTRAL
+  STABLE
+  VERY_STABLE
+}
+
+enum AddressType {
+  OWNER
+  RENTED
+  RESIDENTIAL
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CLOSED
+}
+
+enum EmploymentType {
+  SALARIED
+  SELF_EMPLOYED
+  STUDENT
+  UNEMPLOYED
+  OTHER
+}
+
+enum LoanType {
+  PERSONAL
+  HOME
+  EDUCATION
+  BUSINESS
+  AUTO
+  CREDIT_CARD
+  OTHER
+}
+// ✅ NEW ENUM — Identification of Document Types
+enum DocumentType {
+  AADHAAR
+  PAN
+  PAY_SLIP
+  BANK_STATEMENT
+  PHOTO
+  SIGNATURE
 }

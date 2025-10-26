@@ -1,44 +1,56 @@
-// middleware/authMiddleware.js
-
 const jwt = require('jsonwebtoken');
-const { UnauthorizedError } = require('../GlobalExceptionHandler/exception');
 const { PrismaClient } = require('@prisma/client');
+const { UnauthorizedError } = require('../GlobalExceptionHandler/exception');
+const logger = require('../utils/logger');
+
 const prisma = new PrismaClient();
 
+/**
+ * Auth Middleware
+ * Logs headers, verifies JWT, attaches req.user
+ */
 const authenticate = async (req, res, next) => {
   try {
+    logger.info(`[AUTH] Incoming Headers: ${JSON.stringify(req.headers)}`);
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.error('❌ [AUTH] Missing or malformed Authorization header');
       throw new UnauthorizedError('Authentication token missing or malformed.');
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      logger.error(`❌ [AUTH] JWT verification failed: ${err.message}`, { stack: err.stack });
+      throw new UnauthorizedError('Invalid or expired token.');
+    }
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id }
-    });
+    logger.debug(`🔑 [AUTH] JWT decoded: ${JSON.stringify(decoded)}`);
 
+    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
     if (!user) {
+      logger.error('❌ [AUTH] User not found in DB');
       throw new UnauthorizedError('User not found.');
     }
 
-    // ✅ Safer option: attach only minimal info
     req.user = {
       id: user.id,
+      customUserId: user.customUserId,
       email: user.email,
+      phone: user.phone,
     };
 
+    logger.info(`✅ [AUTH] req.user set: ${JSON.stringify(req.user)}`);
+
     next();
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return next(new UnauthorizedError('Invalid or expired token.'));
-    }
-    next(error);
+  } catch (err) {
+    logger.error(`❌ [AUTH] Middleware error: ${err.message}`, { stack: err.stack });
+    next(err);
   }
 };
 
-module.exports = {
-  authenticate
-};
+module.exports = { authenticate };

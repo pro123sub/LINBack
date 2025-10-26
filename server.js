@@ -7,6 +7,8 @@ const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 const userRoutes = require('./routes/userRoutes');
+const authRoutes = require('./routes/authRoutes');
+const kycRoutes = require('./routes/kycRoutes'); // ✅ Added KYC routes
 const logger = require('./utils/logger'); // Winston logger
 const errorHandler = require('./GlobalExceptionHandler/errorHandler'); // Central error handler
 
@@ -41,13 +43,12 @@ app.get('/', (req, res) => {
   res.json({ message: 'LoanInNeed Backend is up and running!' });
 });
 
-// Route handlers
+// ✅ Route handlers
 app.use('/api/users', userRoutes);
-// Example placeholder for future routes
-// const analyticsRoutes = require('./routes/analyticsRoutes');
-// app.use('/api/analytics', analyticsRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/kyc', kycRoutes); // ✅ Mounted KYC
 
-// Global error handler should be last
+// ✅ Global error handler should be last
 app.use(errorHandler);
 
 // Define the port
@@ -68,4 +69,5 @@ process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at: %s, reason: %s', promise, reason);
   // Optionally exit process or handle appropriately
 });
+
 module.exports = app;
